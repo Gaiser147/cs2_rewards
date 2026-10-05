@@ -1,0 +1,10 @@
+# Geheimnisse und persönliche Daten
+.env
+ledger.json
+
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+build/
+dist/
