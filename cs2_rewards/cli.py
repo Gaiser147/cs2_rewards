@@ -85,6 +85,14 @@ def cmd_status(ledger: Ledger, now: datetime, con: Console) -> int:
 
 def buy_gift(ledger: Ledger, reward, offers: list, provider, now: datetime, con: Console, dry_run: bool) -> int:
     """Geschenk-Modus: Claude kauft ohne Rückfrage, die harten Limits gelten trotzdem."""
+    balance = provider.balance_usd_cents() if hasattr(provider, "balance_usd_cents") else None
+    if balance is not None:
+        con.print(f"CSFloat-Guthaben: ${balance / 100:.2f}")
+        affordable = [o for o in offers if o.usd_cents is None or o.usd_cents <= balance]
+        if not affordable:
+            con.print(f"Guthaben reicht für keins der Angebote. Belohnung #{reward.id} bleibt offen.")
+            return 1
+        offers = affordable
     if dry_run:
         con.print(f"Dry-Run: Geschenk wäre {offers[0].name} für {format_eur(offers[0].price_cents)}. Nichts gekauft.")
         return 0
@@ -107,6 +115,8 @@ def buy_gift(ledger: Ledger, reward, offers: list, provider, now: datetime, con:
         con.print("")
         con.print(f"🎁 Geschenk für „{reward.reason}“: {offer.name}")
         con.print(f"   {format_eur(offer.price_cents)}  {offer.link}")
+        if balance is not None and offer.usd_cents is not None:
+            con.print(f"   Vom Guthaben abgezogen: {offer.original_price}, übrig ca. ${(balance - offer.usd_cents) / 100:.2f}")
         con.print("Der Verkäufer schickt dir jetzt ein Steam-Trade-Angebot. Nimm es in der Steam-App an.")
         con.print(f"Monatsbudget noch frei: {format_eur(monthly_remaining(ledger, now))}.")
         return 0

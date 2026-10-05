@@ -131,6 +131,10 @@ class FakeResponse:
     def json(self):
         return self._body
 
+    def raise_for_status(self):
+        if not self.ok:
+            raise requests.HTTPError(f"HTTP {self.status_code}")
+
 
 class FakeSession:
     def __init__(self, response=None, exc=None):
@@ -173,3 +177,46 @@ def test_buy_network_error_never_retries():
     with pytest.raises(BuyError) as e:
         provider.buy(csf_offer("A | B (Field-Tested)", 140))
     assert e.value.retry is False
+
+
+class FakeBuyerWithBalance(FakeBuyer):
+    def __init__(self, offers, results, balance):
+        super().__init__(offers, results)
+        self.balance = balance
+
+    def balance_usd_cents(self):
+        return self.balance
+
+
+def test_gift_skips_offers_above_balance(ledger):
+    offers = [csf_offer("A | B (Field-Tested)", 190, "A"), csf_offer("C | D (Field-Tested)", 120, "C")]
+    provider = FakeBuyerWithBalance(offers, [None], balance=150)
+    code, con = run(["claim", "M", "x"], ledger, provider)
+    assert code == 0
+    assert provider.bought == ["C"]
+    assert "$1.50" in con.text
+
+
+def test_gift_balance_too_low(ledger):
+    provider = FakeBuyerWithBalance([csf_offer("A | B (Field-Tested)", 190)], [], balance=10)
+    code, con = run(["claim", "M", "x"], ledger, provider)
+    assert code == 1
+    assert provider.bought == []
+    assert "Guthaben reicht" in con.text
+
+
+class FakeGetSession(FakeSession):
+    def get(self, url, headers, timeout):
+        self.calls.append((url, None, headers))
+        return self.response
+
+
+def test_balance_from_me_endpoint():
+    session = FakeGetSession(FakeResponse(200, {"user": {"steam_id": "1", "balance": 1234, "pending_balance": 0}}))
+    assert CSFloatProvider("KEY", session=session).balance_usd_cents() == 1234
+    assert session.calls[0][0] == "https://csfloat.com/api/v1/me"
+
+
+def test_balance_unknown_on_error():
+    session = FakeGetSession(FakeResponse(200, {"unexpected": True}))
+    assert CSFloatProvider("KEY", session=session).balance_usd_cents() is None

@@ -20,6 +20,7 @@ from ..fx import usd_to_eur_rate
 
 LISTINGS_URL = "https://csfloat.com/api/v1/listings"
 BUY_URL = "https://csfloat.com/api/v1/listings/buy"
+ME_URL = "https://csfloat.com/api/v1/me"
 ITEM_URL = "https://csfloat.com/item/{id}"
 CATEGORY = {"any": 0, "no": 1, "yes": 2}
 
@@ -94,6 +95,15 @@ class CSFloatProvider:
         resp.raise_for_status()
         offers = parse_listings(resp.json(), factor, min_cents, max_cents, filters)
         return rng.sample(offers, min(count, len(offers)))
+
+    def balance_usd_cents(self):
+        """Verfügbares CSFloat-Guthaben in US-Cent (GET /api/v1/me, Feld user.balance), None wenn unbekannt."""
+        try:
+            resp = self._http.get(ME_URL, headers={"Authorization": self._api_key}, timeout=20)
+            resp.raise_for_status()
+            return int(resp.json()["user"]["balance"])
+        except (requests.RequestException, ValueError, KeyError, TypeError):
+            return None
 
     def buy(self, offer: Offer) -> None:
         """Kauft genau dieses Angebot zum angezeigten Preis. total_price schützt vor Preisänderungen."""

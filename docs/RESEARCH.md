@@ -32,6 +32,10 @@ Geprüft wurde das über die offizielle Doku (über Suchergebnisse, weil `docs.c
 - `POST https://csfloat.com/api/v1/listings/buy`, Header `Authorization: <API-KEY>`, Body `{"contract_ids": ["<listing-id>"], "total_price": <US-Cent>}`
 - `total_price` muss zum Listing-Preis passen. Hat sich der Preis geändert, lehnt CSFloat ab, statt teurer zu kaufen.
 - Quelle: `BuyRequestPayload` und `Buy()` in https://github.com/Bios-Marcel/csfloat_go (`csfloat.go`). Nicht in der offiziellen Doku.
+- **Guthaben:** `GET https://csfloat.com/api/v1/me` liefert `user.balance` (verfügbar) und `user.pending_balance` (noch gesperrt), beides in US-Cent. Das Tool liest `balance` vor dem Kauf und versucht nur Angebote, die das Guthaben deckt.
+- **Ablauf nach dem Kauf:** Der Preis wird sofort vom Guthaben abgezogen und liegt bei CSFloat als Treuhand. Der Trade steht auf `queued`, bis der Verkäufer ihn annimmt (`pending`). Der Verkäufer schickt dann ein Steam-Trade-Angebot an das Steam-Konto **des Käufer-Accounts**. Leonhard nimmt es an. Nach Ablauf des Steam-Trade-Schutzes ist der Trade `verified`, und der Verkäufer bekommt das Geld. Schickt der Verkäufer nicht oder wird der Trade nicht angenommen, endet er als `cancelled`/`failed`, und das Guthaben kommt zurück.
+- **Einzahlen:** Guthaben wird per Karte, SEPA, Krypto u. a. aufgeladen, je nach Methode mit ca. 1–2,8 % Gebühr. Der 3-%-Aufschlag des Tools deckt das ab.
+- **Für andere kaufen geht nicht:** Gekaufte Items gehen immer an das Steam-Konto, das mit dem kaufenden CSFloat-Account verknüpft ist. Laut AGB ist ein Account persönlich und darf nicht geteilt werden.
 - Risiken: Der Endpunkt kann sich ändern, die Nutzung kann gegen die AGB verstoßen, und es ist nicht bestätigt, dass ein Developer-Key kaufen darf. Der erste echte Test sollte eine S-Belohnung sein.
 
 Gebühren für Käufer: Der Preis im Listing ist der Kaufpreis. Für Einzahlungen auf das CSFloat-Guthaben können je nach Zahlungsart Gebühren anfallen. Das Tool rechnet deshalb USD→EUR mit dem EZB-Tageskurs **plus 3 % Aufschlag**, damit das Euro-Limit sicher hält.
