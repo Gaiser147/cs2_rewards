@@ -1,0 +1,61 @@
+{
+  "data": [
+    {
+      "id": "900000000000000001",
+      "type": "buy_now",
+      "price": 150,
+      "state": "listed",
+      "item": {
+        "market_hash_name": "MAC-10 | Allure (Field-Tested)",
+        "float_value": 0.2213,
+        "is_stattrak": false,
+        "type": "skin"
+      }
+    },
+    {
+      "id": "900000000000000002",
+      "type": "buy_now",
+      "price": 190,
+      "state": "listed",
+      "item": {
+        "market_hash_name": "StatTrak™ Glock-18 | Clear Polymer (Minimal Wear)",
+        "float_value": 0.0912,
+        "is_stattrak": true,
+        "type": "skin"
+      }
+    },
+    {
+      "id": "900000000000000003",
+      "type": "auction",
+      "price": 120,
+      "state": "listed",
+      "item": {
+        "market_hash_name": "P250 | Sand Dune (Factory New)",
+        "float_value": 0.03,
+        "type": "skin"
+      }
+    },
+    {
+      "id": "900000000000000004",
+      "type": "buy_now",
+      "price": 130,
+      "state": "listed",
+      "item": {
+        "market_hash_name": "Revolution Case",
+        "type": "container"
+      }
+    },
+    {
+      "id": "900000000000000005",
+      "type": "buy_now",
+      "price": 900,
+      "state": "listed",
+      "item": {
+        "market_hash_name": "AK-47 | Slate (Field-Tested)",
+        "float_value": 0.31,
+        "type": "skin"
+      }
+    }
+  ],
+  "cursor": "abc"
+}
