@@ -3,6 +3,9 @@
   reward claim M "Boss Gleichungen"     Belohnung eintragen und direkt einlösen
   reward redeem 3                       offene Belohnung später einlösen
   reward status                         Übersicht und Monatsbudget
+
+Mit CSFLOAT_AUTO_BUY=1 (Geschenk-Modus) wählt und kauft das Tool selbst,
+sonst zeigt es Vorschläge und Leonhard kauft auf der Website.
 """
 
 import argparse
@@ -18,7 +21,11 @@ from .filters import WEARS, Filters, normalize_wear
 from .ledger import OPEN, Ledger
 from .limits import LimitError, budget_for, check_purchase, monthly_remaining
 from .money import format_eur, parse_eur
-from .providers import get_provider
+from .providers import auto_buy_enabled, get_provider
+from .providers.csfloat import BuyError
+
+# Höchstens so viele Angebote nacheinander versuchen, falls eins schon weg ist.
+MAX_BUY_ATTEMPTS = 3
 
 
 class Console:
@@ -76,7 +83,38 @@ def cmd_status(ledger: Ledger, now: datetime, con: Console) -> int:
     return 0
 
 
-def redeem(ledger: Ledger, reward, args, provider, now: datetime, con: Console) -> int:
+def buy_gift(ledger: Ledger, reward, offers: list, provider, now: datetime, con: Console, dry_run: bool) -> int:
+    """Geschenk-Modus: Claude kauft ohne Rückfrage, die harten Limits gelten trotzdem."""
+    if dry_run:
+        con.print(f"Dry-Run: Geschenk wäre {offers[0].name} für {format_eur(offers[0].price_cents)}. Nichts gekauft.")
+        return 0
+    for offer in offers[:MAX_BUY_ATTEMPTS]:
+        try:
+            check_purchase(reward.tier, offer.price_cents, ledger, now)
+        except LimitError as e:
+            con.print(f"Übersprungen: {e}")
+            continue
+        try:
+            provider.buy(offer)
+        except BuyError as e:
+            con.print(f"Kauf fehlgeschlagen: {e}")
+            if not e.retry:
+                con.print(f"Belohnung #{reward.id} bleibt offen. Bitte im CSFloat-Konto prüfen, ob doch gekauft wurde.")
+                return 1
+            continue
+        ledger.redeem(reward, item=offer.name, price_cents=offer.price_cents, provider=offer.provider, link=offer.link, now=now)
+        ledger.save()
+        con.print("")
+        con.print(f"🎁 Geschenk für „{reward.reason}“: {offer.name}")
+        con.print(f"   {format_eur(offer.price_cents)}  {offer.link}")
+        con.print("Der Verkäufer schickt dir jetzt ein Steam-Trade-Angebot. Nimm es in der Steam-App an.")
+        con.print(f"Monatsbudget noch frei: {format_eur(monthly_remaining(ledger, now))}.")
+        return 0
+    con.print(f"Kein Kauf hat geklappt. Belohnung #{reward.id} bleibt offen, später nochmal: reward redeem {reward.id}")
+    return 1
+
+
+def redeem(ledger: Ledger, reward, args, provider, now: datetime, con: Console, gift: bool = False) -> int:
     budget = budget_for(reward.tier, ledger, now)
     if budget <= 0:
         con.print(f"Monatslimit ({format_eur(MONTHLY_LIMIT_CENTS)}) ist erreicht. Belohnung #{reward.id} bleibt offen.")
@@ -92,6 +130,9 @@ def redeem(ledger: Ledger, reward, args, provider, now: datetime, con: Console) 
         con.print("Keine passenden Angebote gefunden. Filter lockern oder später nochmal versuchen.")
         con.print(f"Belohnung #{reward.id} bleibt offen.")
         return 1
+
+    if gift:
+        return buy_gift(ledger, reward, offers, provider, now, con, dry_run=args.dry_run)
 
     offers.sort(key=lambda o: o.price_cents)
     con.print("")
@@ -189,7 +230,10 @@ def main(argv=None, con: Console = None, ledger: Ledger = None, provider=None, n
 
     try:
         provider = provider or get_provider(args.provider)
-        return redeem(ledger, reward, args, provider, now, con)
+        gift = auto_buy_enabled() and hasattr(provider, "buy")
+        if auto_buy_enabled() and not gift:
+            con.print(f"Geschenk-Modus geht nur mit CSFloat. Auf {provider.name} kaufst du selbst.")
+        return redeem(ledger, reward, args, provider, now, con, gift=gift)
     except Exception as e:  # Netzwerk, fehlender Key, API-Fehler
         con.print(f"Fehler: {e}")
         status = getattr(getattr(e, "response", None), "status_code", None)

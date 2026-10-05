@@ -23,6 +23,11 @@ def csfloat_api_key() -> Optional[str]:
         return None
 
 
+def auto_buy_enabled() -> bool:
+    """Geschenk-Modus: CSFloat kauft ohne Rückfrage. Muss in der .env bewusst eingeschaltet werden."""
+    return os.environ.get("CSFLOAT_AUTO_BUY", "").strip().lower() in ("1", "true", "ja", "yes")
+
+
 def get_provider(name: str):
     if name == "skinport":
         return SkinportProvider()

@@ -20,6 +20,8 @@ class Offer:
     provider: str
     float_value: Optional[float] = None
     original_price: Optional[str] = None  # z. B. "$1.23" bei CSFloat
+    listing_id: Optional[str] = None  # nur CSFloat, für den Kauf
+    usd_cents: Optional[int] = None  # nur CSFloat: exakter Listing-Preis für den Kauf
 
     @property
     def wear(self) -> Optional[str]:

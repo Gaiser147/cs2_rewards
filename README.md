@@ -1,6 +1,6 @@
 # cs2-rewards
 
-Kleines Kommandozeilen-Tool für das Lern-Belohnungssystem: Wenn Claude im Mathe-Chat eine Belohnung vergibt (`🎁 REWARD: M – Boss Gleichungen gelöst`), löst Leonhard sie hier ein. Das Tool sucht passende CS2-Skins im Budget, Leonhard wählt einen aus und kauft ihn selbst auf der Website. Danach wird alles protokolliert.
+Kleines Kommandozeilen-Tool für das Lern-Belohnungssystem: Wenn Claude im Mathe-Chat eine Belohnung vergibt (`🎁 REWARD: M – Boss Gleichungen gelöst`), löst Leonhard sie hier ein. Im **Geschenk-Modus** sucht das Tool selbst einen CS2-Skin im Budget aus und kauft ihn auf CSFloat. Leonhard nimmt nur noch das Steam-Trade-Angebot an. Ohne Geschenk-Modus zeigt das Tool Vorschläge, und Leonhard kauft selbst auf der Website. Alles wird protokolliert.
 
 ## Regeln im Code
 
@@ -14,8 +14,8 @@ Kleines Kommandozeilen-Tool für das Lern-Belohnungssystem: Wenn Claude im Mathe
 - **Monatslimit: 30 €** für alle Käufe zusammen (Kalendermonat).
 - Die Limits stehen in `cs2_rewards/config.py`. Ändern geht nur per Code-Änderung, nicht über die `.env`.
 - Es werden nur konkrete Waffen-Skins, Messer und Handschuhe vorgeschlagen. **Cases, Keys, Kapseln, Sticker und Pakete sind immer ausgeschlossen.**
-- Kein Auto-Kauf: Jeder Kauf braucht eine Auswahl, das Eintippen des Preises und den Klick auf „Kaufen“ auf der Website.
-- Liegt ein Preis über dem Stufen- oder Monatslimit, verweigert das Tool den Kauf, auch beim nachträglichen Eintragen des bezahlten Preises.
+- Liegt ein Preis über dem Stufen- oder Monatslimit, verweigert das Tool den Kauf, im Geschenk-Modus genauso wie im manuellen Modus.
+- Der Geschenk-Modus ist standardmäßig aus und muss in der `.env` bewusst eingeschaltet werden.
 
 ## Einrichtung
 
@@ -37,6 +37,22 @@ Ohne Key nutzt das Tool Skinport. Das funktioniert sofort, zeigt aber keine Floa
 2. Den Key **eine** dieser beiden Arten hinterlegen:
    - im System-Keyring (sicherer): `python -m keyring set cs2_rewards csfloat_api_key`
    - in einer `.env`: `.env.example` nach `.env` kopieren und `CSFLOAT_API_KEY=...` eintragen. Die `.env` ist in `.gitignore` und wird nie committet.
+
+### Geschenk-Modus (automatischer Kauf)
+
+In der `.env` setzen:
+
+```
+CSFLOAT_AUTO_BUY=1
+```
+
+Dann läuft `reward claim` so: Das Tool sucht auf CSFloat passende Angebote, wählt zufällig eines aus (Überraschung!), kauft es sofort mit deinem **CSFloat-Guthaben** und zeigt danach, was es geworden ist. Es gibt keine Rückfrage.
+
+Gut zu wissen:
+- **Guthaben vorher aufladen.** Gekauft wird nur, was auf dem CSFloat-Konto liegt. Wer dort z. B. nur 30 € im Monat einzahlt, hat damit eine zweite, echte Obergrenze.
+- **Inoffizieller Endpunkt.** Kaufen per API steht nicht in der offiziellen CSFloat-Doku. Das Tool nutzt den Endpunkt, den auch die Website verwendet (`POST /api/v1/listings/buy`). Er kann sich ohne Ankündigung ändern, und die Nutzung kann gegen die CSFloat-Nutzungsbedingungen verstoßen. Bewusste Entscheidung, siehe [docs/RESEARCH.md](docs/RESEARCH.md#csfloat).
+- **Sicherheitsnetz:** Ist ein Angebot schon verkauft, versucht das Tool bis zu 2 weitere. Bei unklarer Antwort (Zeitüberschreitung, Serverfehler, kein Guthaben) bricht es sofort ab und kauft nichts doppelt. Die Belohnung bleibt dann offen. Bitte im CSFloat-Konto nachsehen.
+- `--dry-run` zeigt, welches Geschenk es geworden wäre, ohne zu kaufen (verrät aber die Überraschung).
 
 ### Steam
 
@@ -65,7 +81,7 @@ reward redeem 3
 reward status
 ```
 
-Ablauf bei `claim`:
+Ablauf bei `claim` ohne Geschenk-Modus:
 
 1. Die Belohnung wird als **offen** eingetragen.
 2. Das Tool zeigt bis zu 5 Vorschläge zwischen 40 % und 100 % des Budgets, mit Preis, Link und (bei CSFloat) Float.
@@ -86,7 +102,9 @@ Daten liegen in `~/.cs2_rewards/` (Ledger `ledger.json` und Cache). Ein anderer 
 reward claim S "Test" --provider csfloat --dry-run
 ```
 
-Erscheinen Vorschläge mit Float-Werten und `csfloat.com/item/...`-Links, passt alles. Bei einer Fehlermeldung bitte die Ausgabe an Claude schicken, dann wird der Parser angepasst. Die Feldnamen sind bisher nur aus der Doku übernommen und noch nicht mit einem echten Key getestet.
+Erscheinen Vorschläge mit Float-Werten und `csfloat.com/item/...`-Links, passt alles. Bei einer Fehlermeldung bitte die Ausgabe an Claude schicken, dann wird der Parser angepasst. Die Feldnamen stammen aus der Doku und dem Wrapper `csfloat_go` und sind noch nicht mit einem echten Key getestet.
+
+Danach den Geschenk-Modus einmal mit einer **S-Belohnung** ausprobieren (max. 0,50 €), bevor größere Stufen drankommen.
 
 ## Entwicklung
 

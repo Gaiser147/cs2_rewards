@@ -6,9 +6,9 @@ Stand: Oktober 2026. Gebühren und Regeln ändern sich, vor größeren Käufen a
 
 - **CSFloat** bleibt erste Wahl. Die offizielle API kann Angebote suchen und filtern (Preis, Float, StatTrak, Sortierung) und braucht dafür einen API-Key.
   **Kaufen per API ist nicht offiziell dokumentiert.** Inoffizielle Wrapper nutzen zwar einen internen `POST /buy`-Endpunkt, das widerspricht aber unserer Regel „nur offizielle APIs“.
-  → Das Tool sucht über die API und öffnet den Angebotslink. Leonhard klickt selbst auf „Kaufen“.
+  → Ursprünglich öffnete das Tool nur den Angebotslink. **Auf Leonhards ausdrücklichen Wunsch gibt es jetzt den Geschenk-Modus**, der über den inoffiziellen Endpunkt selbst kauft (siehe unten).
 - **Skinport** ist der Fallback ohne Key. Die öffentliche API liefert Preise direkt in EUR, aber nur den günstigsten Preis pro Skin (keine Einzelangebote, kein Float). Kaufen geht nur auf der Website.
-- **DMarket** hätte als einzige eine offizielle Kauf-API. Die braucht aber signierte Requests (Ed25519-Schlüsselpaar) und ein Guthaben auf DMarket. Für ein paar Euro im Monat lohnt sich das nicht, und Auto-Kauf ist ohnehin nicht gewollt.
+- **DMarket** hätte als einzige eine offizielle Kauf-API. Die braucht aber signierte Requests (Ed25519-Schlüsselpaar) und ein Guthaben auf DMarket. Das wäre der offizielle Weg für den Geschenk-Modus gewesen. Leonhard hat sich aber für CSFloat entschieden.
 - **Steam Community Market**: keine offizielle Kauf-API, rund 15 % Gebühr im Preis enthalten, Guthaben bleibt in Steam gebunden. Nur als Preisvergleich sinnvoll.
 
 ## CSFloat
@@ -26,6 +26,13 @@ Stand: Oktober 2026. Gebühren und Regeln ändern sich, vor größeren Käufen a
 | Ohne Key | `403 {"message":"You need to be logged in to search listings"}` (aus diesem Projekt heraus getestet) |
 
 Geprüft wurde das über die offizielle Doku (über Suchergebnisse, weil `docs.csfloat.com` aus der Build-Umgebung nicht erreichbar war), den Go-Wrapper `Bios-Marcel/csfloat_go` und einen echten Aufruf ohne Key. **Die Feldnamen der Antwort sind noch nicht mit einem echten Key bestätigt.** Der erste Live-Test bei Leonhard (siehe README) klärt das. Der Parser akzeptiert sowohl `{"data": [...]}` als auch eine reine Liste.
+
+### Kaufen (inoffiziell, Geschenk-Modus)
+
+- `POST https://csfloat.com/api/v1/listings/buy`, Header `Authorization: <API-KEY>`, Body `{"contract_ids": ["<listing-id>"], "total_price": <US-Cent>}`
+- `total_price` muss zum Listing-Preis passen. Hat sich der Preis geändert, lehnt CSFloat ab, statt teurer zu kaufen.
+- Quelle: `BuyRequestPayload` und `Buy()` in https://github.com/Bios-Marcel/csfloat_go (`csfloat.go`). Nicht in der offiziellen Doku.
+- Risiken: Der Endpunkt kann sich ändern, die Nutzung kann gegen die AGB verstoßen, und es ist nicht bestätigt, dass ein Developer-Key kaufen darf. Der erste echte Test sollte eine S-Belohnung sein.
 
 Gebühren für Käufer: Der Preis im Listing ist der Kaufpreis. Für Einzahlungen auf das CSFloat-Guthaben können je nach Zahlungsart Gebühren anfallen. Das Tool rechnet deshalb USD→EUR mit dem EZB-Tageskurs **plus 3 % Aufschlag**, damit das Euro-Limit sicher hält.
 
